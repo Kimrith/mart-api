@@ -46,6 +46,7 @@ const Post_product = async (req, res) => {
   try {
     const categoryId = req.params.id;
 
+    // ✅ Validate category ID
     if (!mongoose.Types.ObjectId.isValid(categoryId)) {
       return res.status(400).json({ message: "Invalid category ID" });
     }
@@ -55,21 +56,45 @@ const Post_product = async (req, res) => {
       return res.status(400).json({ message: "Category not found" });
     }
 
+    // ✅ Ensure products array exists
+    if (!Array.isArray(categoryExists.products)) {
+      categoryExists.products = [];
+    }
+
+    // ✅ Validate required fields
+    const { product_id, name_product, price, qty, stock, dis, discount } =
+      req.body;
+
+    if (
+      !name_product ||
+      price === undefined ||
+      qty === undefined ||
+      stock === undefined ||
+      dis === undefined ||
+      discount === undefined
+    ) {
+      return res.status(400).json({
+        message: "Missing required product fields",
+      });
+    }
+
     const baseUrl = `${req.protocol}://${req.get("host")}`;
 
-    const imgPath = req.file ? `${baseUrl}/uploads/${req.file.filename}` : null;
+    // ✅ FIXED image path
+    const imgPath = req.file
+      ? `${baseUrl}/uploads/products/${req.file.filename}`
+      : null;
 
     const newProduct = new Product({
-      product_id: req.body.product_id,
-      name_product: req.body.name_product,
-      price: req.body.price,
-      qty: req.body.qty,
-      stock: req.body.stock,
-      dis: req.body.dis,
-      discount: req.body.discount,
+      product_id,
+      name_product,
+      price: Number(price),
+      qty: Number(qty),
+      stock: Number(stock),
+      dis,
+      discount: Number(discount),
       img: imgPath,
       category: categoryId,
-      date: new Date(),
     });
 
     await newProduct.save();
@@ -83,7 +108,10 @@ const Post_product = async (req, res) => {
     });
   } catch (err) {
     console.error("POST PRODUCT ERROR:", err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({
+      message: "Internal server error",
+      error: err.message,
+    });
   }
 };
 
@@ -108,7 +136,7 @@ const Put_product = async (req, res) => {
     Object.assign(product, req.body);
 
     if (req.file) {
-      product.img = `${baseUrl}/uploads/${req.file.filename}`;
+      product.img = `${baseUrl}/uploads/products/${req.file.filename}`;
     }
 
     await product.save();
