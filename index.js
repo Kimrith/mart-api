@@ -1,47 +1,62 @@
+require("dotenv").config(); // ✅ MUST be first
+
 const express = require("express");
 const cors = require("cors");
-const PORT = 3000;
+
 const app = express();
+const PORT = process.env.PORT || 3000;
+
 const DB_connect = require("./src/Util/db");
 
-const route_app = require("./src/Routes/cetecory.route");
+const category_route = require("./src/Routes/cetecory.route");
 const product_route = require("./src/Routes/product.route");
-const app_order = require("./src/Routes/order.route");
+const order_route = require("./src/Routes/order.route");
 const login_route = require("./src/Routes/login.route");
-const adminroute = require("./src/Routes/admin.route");
+const admin_route = require("./src/Routes/admin.route");
 
-// FIX CORS + FIX BODY SIZE LIMIT FOR IMAGES
+// =======================
+// MIDDLEWARE
+// =======================
 app.use(
   cors({
     origin: "*",
-    methods: "GET,POST,PUT,DELETE",
-    allowedHeaders: "Content-Type, Authorization",
+    methods: ["GET", "POST", "PUT", "DELETE"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
-// Static upload folder
-app.use("/uploads", express.static(__dirname + "/uploads"));
+// ✅ Static uploads (ONLY ONCE)
 app.use("/uploads", express.static("uploads"));
 
-// Connect DB
+// =======================
+// DATABASE
+// =======================
 DB_connect();
 
-// Routes
-route_app(app);
+// =======================
+// ROUTES
+// =======================
+category_route(app);
 product_route(app);
-app_order(app);
+order_route(app);
 login_route(app);
-adminroute(app);
+admin_route(app);
 
-// Test
-app.get("", (req, res) => {
-  res.send("work");
+// =======================
+// HEALTH CHECK
+// =======================
+app.get("/", (req, res) => {
+  res.status(200).json({
+    message: "✅ API is running",
+  });
 });
 
-// Start server
+// =======================
+// START SERVER
+// =======================
 app.listen(PORT, () => {
-  console.log(`Server is running on port http://localhost:${PORT}`);
+  console.log(`🚀 Server running on port ${PORT}`);
 });
