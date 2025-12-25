@@ -24,83 +24,72 @@ const getCount = async (req, res) => {
 // ➕ Post new order(s)
 const postOrder = async (req, res) => {
   try {
-    const data = req.body;
+    const orderData = req.body;
 
-    // 1️⃣ CHECK STOCK BEFORE CREATING ORDER
-    for (const item of data.products) {
+    // 1️⃣ CHECK STOCK
+    for (const item of orderData.products) {
       const product = await Product.findById(item.product_id);
 
       if (!product) {
-        return res.status(404).json({
-          message: "Product not found",
-        });
-      }
-
-      if (product.stock <= 0) {
-        return res.status(400).json({
-          message: `${product.name_product} is OUT OF STOCK!`,
-        });
+        return res.status(404).json({ message: "Product not found" });
       }
 
       if (product.stock < item.qty) {
         return res.status(400).json({
-          message: `Not enough stock for ${product.name_product}. Available: ${product.stock}`,
+          message: `Not enough stock for ${product.name_product}`,
         });
       }
     }
 
-    // 2️⃣ CREATE ORDER
-    const result = Array.isArray(data)
-      ? await Order.insertMany(data)
-      : await Order.create(data);
+    // 2️⃣ CREATE ORDER (ONLY ONE ORDER)
+    const order = await Order.create(orderData);
 
-    // 3️⃣ DECREASE STOCK AFTER ORDER SUCCESS
-    for (const item of data.products) {
+    // 3️⃣ UPDATE STOCK
+    for (const item of orderData.products) {
       await Product.findByIdAndUpdate(item.product_id, {
         $inc: {
-          qty: item.qty, // Increase qty by purchased amount
           stock: -item.qty,
+          qty: item.qty,
         },
       });
     }
 
-    // 4️⃣ Calculate total amount
-    const totalAmount = data.products.reduce(
+    // 4️⃣ TOTAL
+    const totalAmount = orderData.products.reduce(
       (sum, item) => sum + item.price * item.qty * (1 - item.discount / 100),
       0
     );
 
-    // 5️⃣ Send Telegram alert
+    // 5️⃣ TELEGRAM
     let productList = "";
-    data.products.forEach((p, index) => {
-      productList += `${index + 1}. ${p.name_product}
+    orderData.products.forEach((p, i) => {
+      productList += `${i + 1}. ${p.name_product}
 Qty: ${p.qty}
 Price: $${p.price}
 Discount: ${p.discount}%\n\n`;
     });
 
     sendTelegram(
-      `<b>🆕 New Order Created</b>
+      `<b>🆕 New Order</b>
 
-👤 ${data.customer_name}
-📞 ${data.customer_phone}
-📍 ${data.customer_address}
+👤 ${orderData.customer_name}
+📞 ${orderData.customer_phone}
+📍 ${orderData.customer_address}
 
 <b>Products:</b>
 ${productList}
 
 Total: $${totalAmount.toFixed(2)}
-Payment: ${data.payment_method}
-Delivery: ${data.delivery_method}
-
-📅 Date: ${new Date().toLocaleString()}`
+Payment: ${orderData.payment_method}
+Delivery: ${orderData.delivery_method}`
     );
 
     res.status(201).json({
-      message: "Order saved & stock updated",
-      data: result,
+      message: "Order created successfully",
+      order,
     });
   } catch (err) {
+    console.error(err);
     res.status(500).json({ message: err.message });
   }
 };

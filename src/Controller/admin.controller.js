@@ -38,6 +38,7 @@ const getCurrentAdmin = async (req, res) => {
 // UPDATE CURRENT ADMIN
 const updateAdmin = async (req, res) => {
   try {
+    const baseUrl = `${req.protocol}://${req.get("host")}`;
     const data = {};
 
     if (req.body.name) data.name = req.body.name;
@@ -49,7 +50,7 @@ const updateAdmin = async (req, res) => {
     }
 
     if (req.file) {
-      data.profile_img = `/uploads/admin/${req.file.filename}`;
+      data.profile_img = `${baseUrl}/uploads/admin/${req.file.filename}`;
     }
 
     const admin = await Admin.findByIdAndUpdate(req.user.id, data, {
@@ -58,7 +59,7 @@ const updateAdmin = async (req, res) => {
 
     res.json({ message: "Profile updated", admin });
   } catch (err) {
-    console.error(err);
+    console.error("Update admin error:", err);
     res.status(500).json({ message: "Update failed" });
   }
 };

@@ -49,19 +49,19 @@ const Post_product = async (req, res) => {
     const { product_id, name_product, price, qty, stock, dis, discount } =
       req.body;
 
-    // 🧩 Handle uploaded file
+    const baseUrl = `${req.protocol}://${req.get("host")}`;
+
+    // ✅ Handle uploaded file
     let imgPath = null;
     if (req.file) {
-      imgPath = `/uploads/${req.file.filename}`;
+      imgPath = `${baseUrl}/uploads/${req.file.filename}`;
     }
 
-    // 🧩 Check if category exists
     const categoryExists = await Category.findById(categoryId);
     if (!categoryExists) {
       return res.status(400).json({ message: "Invalid category ID" });
     }
 
-    // 🧩 Create new product
     const newProduct = new Product({
       product_id,
       name_product,
@@ -77,16 +77,15 @@ const Post_product = async (req, res) => {
 
     await newProduct.save();
 
-    // 🧩 Link product to category
     categoryExists.products.push(newProduct._id);
     await categoryExists.save();
 
     res.status(201).json({
-      message: "✅ Product created successfully!",
+      message: "✅ Product created successfully",
       product: newProduct,
     });
   } catch (err) {
-    console.error("❌ Error creating product:", err);
+    console.error(err);
     res.status(500).json({ error: err.message });
   }
 };
@@ -95,38 +94,38 @@ const Post_product = async (req, res) => {
 const Put_product = async (req, res) => {
   try {
     const { id } = req.params;
+    const baseUrl = `${req.protocol}://${req.get("host")}`;
 
     const product = await Product.findById(id);
-    if (!product) return res.status(404).json({ message: "Product not found" });
-
-    // ✅ Update text fields (if provided)
-    product.product_id = req.body.product_id || product.product_id;
-    product.name_product = req.body.name_product || product.name_product;
-    product.price = req.body.price || product.price;
-    product.qty = req.body.qty || product.qty;
-    product.stock = req.body.stock || product.stock;
-    product.dis = req.body.dis || product.dis;
-    product.discount = req.body.discount || product.discount;
-
-    // ✅ Handle uploaded image
-    if (req.file) {
-      product.img = `/uploads/${req.file.filename}`;
+    if (!product) {
+      return res.status(404).json({ message: "Product not found" });
     }
 
-    // ✅ Recalculate amount
-    product.amount = product.price * product.qty - (product.discount || 0);
+    product.product_id = req.body.product_id ?? product.product_id;
+    product.name_product = req.body.name_product ?? product.name_product;
+    product.price = req.body.price ?? product.price;
+    product.qty = req.body.qty ?? product.qty;
+    product.stock = req.body.stock ?? product.stock;
+    product.dis = req.body.dis ?? product.dis;
+    product.discount = req.body.discount ?? product.discount;
+
+    // ✅ Handle new image
+    if (req.file) {
+      product.img = `${baseUrl}/uploads/${req.file.filename}`;
+    }
 
     await product.save();
 
     res.status(200).json({
-      message: "✅ Product updated successfully!",
+      message: "✅ Product updated successfully",
       product,
     });
   } catch (err) {
-    console.error("❌ Error updating product:", err);
+    console.error(err);
     res.status(500).json({ error: err.message });
   }
 };
+
 // ✅ DELETE product by ID
 const Remove_product = async (req, res) => {
   try {

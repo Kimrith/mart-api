@@ -69,50 +69,41 @@ const postLogin = async (req, res) => {
 const editLogin = async (req, res) => {
   try {
     const { id } = req.params;
-
-    const allowed = [
-      "profile_img",
-      "name_user",
-      "phone_number",
-      "email",
-      "password",
-      "address",
-    ];
+    const baseUrl = `${req.protocol}://${req.get("host")}`;
 
     const data = {};
 
-    // Loop through allowed fields
-    for (const key of allowed) {
-      if (req.body[key] && req.body[key] !== "") {
-        // ⭐ If password, hash it
-        if (key === "password") {
-          if (req.body[key].length < 8) {
-            return res.status(400).json({
-              message: "Password must be at least 8 characters",
-            });
-          }
+    if (req.body.name_user) data.name_user = req.body.name_user;
+    if (req.body.phone_number) data.phone_number = req.body.phone_number;
+    if (req.body.email) data.email = req.body.email;
+    if (req.body.address) data.address = req.body.address;
 
-          const salt = await bcrypt.genSalt(10);
-          const hashed = await bcrypt.hash(req.body[key], salt);
-          data.password = hashed;
-        } else {
-          data[key] = req.body[key];
-        }
-      }
+    // 🔐 PASSWORD
+    if (req.body.password && req.body.password.length >= 8) {
+      const salt = await bcrypt.genSalt(10);
+      data.password = await bcrypt.hash(req.body.password, salt);
+    }
+
+    // 🖼️ PROFILE IMAGE (FIX)
+    if (req.file) {
+      data.profile_img = `${baseUrl}/uploads/users/${req.file.filename}`;
     }
 
     const updatedLogin = await Login.findByIdAndUpdate(id, data, {
       new: true,
-      runValidators: false,
     });
 
     if (!updatedLogin) {
-      return res.status(404).json({ message: "Login not found" });
+      return res.status(404).json({ message: "User not found" });
     }
 
-    res.status(200).json(updatedLogin);
+    res.status(200).json({
+      message: "Profile updated",
+      user: updatedLogin,
+    });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error("Edit login error:", err);
+    res.status(500).json({ message: "Server error" });
   }
 };
 

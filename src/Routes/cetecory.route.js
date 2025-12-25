@@ -1,11 +1,15 @@
-const express = require("express");
 const multer = require("multer");
 const fs = require("fs");
-const cetecory = require("../Controller/cetecory.controller");
 const path = require("path");
+const cetecory = require("../Controller/cetecory.controller");
 
+// ============================
+// UPLOAD CONFIG
+// ============================
 const uploadDir = "uploads/categories";
-if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, uploadDir),
@@ -14,32 +18,32 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
+// ============================
+// ROUTES
+// ============================
 const route_app = (app) => {
-  app.get("/api/cetecory/count", cetecory.getCount);
   app.get("/api/cetecory", cetecory.getAllCategories);
+  app.get("/api/cetecory/count", cetecory.getCount);
 
-  // ✅ CREATE category
+  // CREATE category
   app.post(
     "/api/cetecory",
     upload.single("thumbnail"),
     cetecory.postCategoryOrProduct
   );
 
-  // ✅ UPDATE category (fix)
+  // UPDATE category
   app.put(
     "/api/cetecory/:id",
     upload.single("thumbnail"),
     cetecory.updateCategory
   );
 
-  // ✅ UPDATE product inside category (optional: different path)
+  // UPDATE product inside category
   app.put("/api/cetecory/:id/product", cetecory.updateProductInCategory);
 
-  // ✅ DELETE category or product
+  // DELETE category or product
   app.delete("/api/cetecory/:id", cetecory.removeProductOrCategory);
-
-  // ✅ Count route
-  app.get("/api/cetecory/getCount", cetecory.getCount);
 };
 
 module.exports = route_app;

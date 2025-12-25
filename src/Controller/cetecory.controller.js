@@ -32,6 +32,8 @@ const postCategoryOrProduct = async (req, res) => {
     const file = req.file;
     const { name_category, products } = req.body;
 
+    const baseUrl = `${req.protocol}://${req.get("host")}`;
+
     // Log incoming data for debugging
     console.log("Incoming body:", req.body);
     console.log("Incoming file:", req.file);
@@ -67,7 +69,7 @@ const postCategoryOrProduct = async (req, res) => {
 
     // ✅ Handle thumbnail (uploaded file or fallback URL)
     const thumbnail = file
-      ? `http://localhost:3000/uploads/categories/${file.filename}`
+      ? `${baseUrl}/uploads/categories/${file.filename}`
       : "https://images.unsplash.com/photo-1512152272829-e3139592d56f?ixlib=rb-4.1.0&q=60&w=3000";
     // ✅ Create new category
     const newCategory = new Category({
@@ -123,18 +125,15 @@ const updateProductInCategory = async (req, res) => {
 // ✅ PUT: Update category (name, thumbnail)
 const updateCategory = async (req, res) => {
   try {
-    console.log("📩 Incoming PUT /api/cetecory/:id");
-    console.log("➡️ Params:", req.params);
-    console.log("➡️ Body:", req.body);
-    console.log("➡️ File:", req.file);
-
     const { id } = req.params;
     const { name_category } = req.body;
     const file = req.file;
 
+    // ✅ FIX: define baseUrl here
+    const baseUrl = `${req.protocol}://${req.get("host")}`;
+
     const category = await Category.findById(id);
     if (!category) {
-      console.log("❌ Category not found!");
       return res.status(404).json({ message: "Category not found" });
     }
 
@@ -143,36 +142,32 @@ const updateCategory = async (req, res) => {
     }
 
     if (file) {
-      console.log("🖼️ New thumbnail uploaded:", file.filename);
-
-      // Optional: delete old image
+      // ✅ DELETE OLD IMAGE (LOCAL ONLY)
       if (category.thumbnail && category.thumbnail.includes("/uploads/")) {
-        const oldPath = path.join(
-          __dirname,
-          "../../",
-          category.thumbnail.replace("http://localhost:3000/", "")
-        );
+        const relativePath = category.thumbnail.replace(baseUrl + "/", "");
+        const oldPath = path.join(__dirname, "../../", relativePath);
+
         if (fs.existsSync(oldPath)) {
           fs.unlinkSync(oldPath);
-          console.log("🧹 Old image deleted:", oldPath);
         }
       }
 
-      category.thumbnail = `http://localhost:3000/uploads/categories/${file.filename}`;
+      // ✅ SAVE NEW IMAGE URL
+      category.thumbnail = `${baseUrl}/uploads/categories/${file.filename}`;
     }
 
     await category.save();
 
-    console.log("✅ Category updated:", category);
     res.status(200).json({
-      message: "✅ Category updated successfully",
+      message: "Category updated successfully",
       category,
     });
   } catch (err) {
-    console.error("🔥 Error in updateCategory:", err);
+    console.error("Update category error:", err);
     res.status(500).json({ error: err.message });
   }
 };
+
 // ✅ DELETE: Remove product from category or delete the whole category
 const removeProductOrCategory = async (req, res) => {
   try {
